@@ -215,6 +215,7 @@ defmodule SentenceTransformer.EmbeddingWorker do
 
   def handle_call({:get_embeddings, texts}, _from, %{serving: serving} = state) do
     embeddings = Enum.map(texts, &generate_embedding(&1, serving))
+
     {:reply, {:ok, embeddings}, state}
   end
 
@@ -261,13 +262,19 @@ defmodule SentenceTransformer.EmbeddingPool do
   end
 
   defp ensure_pool_size do
-    current_workers = __MODULE__ |> DynamicSupervisor.which_children() |> length()
+    current_workers = current_workers_count()
 
     if current_workers < @pool_size do
       Enum.each(1..(@pool_size - current_workers), fn _ ->
         start_worker()
       end)
     end
+  end
+
+  defp current_workers_count do
+    __MODULE__
+    |> DynamicSupervisor.which_children()
+    |> length()
   end
 end
 ```
