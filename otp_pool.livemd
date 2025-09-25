@@ -245,10 +245,11 @@ defmodule SentenceTransformer.EmbeddingPool do
     do: SentenceTransformer.EmbeddingWorker.get_embeddings(get_available_worker(), texts)
 
   defp get_available_worker do
+    ensure_pool_size(current_workers_count())
+
     case DynamicSupervisor.which_children(__MODULE__) do
       [] ->
-        ensure_pool_size()
-        start_worker()
+        raise "Failed to start workers"
       children ->
         with {_id, pid, _type, _modules} <- Enum.random(children), do: pid
     end
@@ -261,15 +262,14 @@ defmodule SentenceTransformer.EmbeddingPool do
     end
   end
 
-  defp ensure_pool_size do
-    current_workers = current_workers_count()
-
-    if current_workers < @pool_size do
-      Enum.each(1..(@pool_size - current_workers), fn _ ->
-        start_worker()
-      end)
-    end
+  defp ensure_pool_size(current_workers)
+  when current_workers < @pool_size do
+    Enum.each(1..(@pool_size - current_workers), fn _ ->
+      start_worker()
+    end)
   end
+
+  defp ensure_pool_size(_current_workers), do: :ok
 
   defp current_workers_count do
     __MODULE__
